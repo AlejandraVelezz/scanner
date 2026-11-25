@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de productos</title>
+
+    <!-- Librería que permite escanear códigos con la cámara -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        :root {
+            --verde: #267a36;
+            --verde-oscuro: #185326;
+            --amarillo: #f7d51d;
+            --fondo: #f5f7f3;
+            --texto: #202520;
+            --borde: #dfe5dd;
+            --blanco: #ffffff;
+            --rojo: #d93025;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 25px 15px;
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--fondo);
+            color: var(--texto);
+        }
+
+        .contenedor {
+            max-width: 750px;
+            margin: auto;
+        }
+
+        .encabezado {
+            background: var(--verde);
+            color: white;
+            padding: 25px;
+            border-radius: 18px 18px 0 0;
+        }
+
+        .encabezado h1 {
+            margin: 0 0 8px;
+            font-size: 26px;
+        }
+
+        .encabezado p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .formulario {
+            background: var(--blanco);
+            padding: 25px;
+            border-radius: 0 0 18px 18px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.06);
+        }
+
+        .campo {
+            margin-bottom: 18px;
+        }
+
+        .campo label {
+            display: block;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 7px;
+        }
+
+        .campo input,
+        .campo select {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid var(--borde);
+            border-radius: 9px;
+            font-size: 16px;
+            background: white;
+            outline: none;
+        }
+
+        .campo input:focus,
+        .campo select:focus {
+            border-color: var(--verde);
+            box-shadow: 0 0 0 3px rgba(38,122,54,0.10);
+        }
+
+        .fila {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .codigo-fila {
+            display: flex;
+            gap: 8px;
+        }
+
+        .codigo-fila input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        button {
+            border: none;
+            border-radius: 9px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-escanear {
+            background: var(--verde);
+            color: white;
+            padding: 12px 15px;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            filter: brightness(0.95);
+        }
+
+        .btn-escanear:hover,
+        .btn-guardar:hover {
+            background: var(--verde-oscuro);
+        }
+
+        .ayuda {
+            font-size: 12px;
+            color: #707870;
+            margin-top: 7px;
+        }
+
+        #zonaEscaner {
+            display: none;
+            margin-top: 15px;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid var(--borde);
+            background: #111;
+        }
+
+        #lector {
+            width: 100%;
+        }
+
+        .btn-cerrar-camara {
+            width: 100%;
+            background: #333;
+            color: white;
+            padding: 13px;
+        }
+
+        #mensaje {
+            margin: 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .btn-guardar {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            color: white;
+            background: var(--verde);
+            margin-top: 5px;
+        }
+
+        .btn-limpiar {
+            width: 100%;
+            padding: 13px;
+            background: #eeeeee;
+            color: #333;
+            margin-top: 10px;
+        }
+
+        .seccion-productos {
+            margin-top: 25px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.04);
+        }
+
+        .seccion-productos h2 {
+            margin-top: 0;
+        }
+
+        .producto {
+            border: 1px solid var(--borde);
+            border-radius: 10px;
+            padding: 13px;
+            margin-bottom: 10px;
+        }
+
+        .producto strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .producto small {
+            display: block;
+            color: #667066;
+            margin-top: 4px;
+        }
+
+        .precio {
+            color: var(--verde);
+            font-weight: bold;
+        }
+
+        .contador {
+            background: #edf6ee;
+            color: var(--verde);
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .vacio {
+            color: #777;
+            text-align: center;
+            padding: 15px;
+        }
+
+        @media (max-width: 500px) {
+            body {
+                padding: 12px 9px;
+            }
+
+            .formulario {
+                padding: 18px;
+            }
+
+            .fila {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .codigo-fila {
+                flex-direction: column;
+            }
+
+            .btn-escanear {
+                width: 100%;
+                padding: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <header class="encabezado">
+        <h1>Registro de productos</h1>
+        <p>Inventario inicial de la tienda</p>
+    </header>
+
+    <form id="formProducto" class="formulario">
+
+        <!-- Nombre -->
+        <div class="campo">
+            <label for="nombre">Nombre del producto *</label>
+            <input
+                type="text"
+                id="nombre"
+                placeholder="Ej. Leche entera"
+                required
+            >
+        </div>
+
+        <!-- Categoría -->
+        <div class="campo">
+            <label for="categoria">Categoría *</label>
+            <select id="categoria" required>
+                <option value="">Selecciona una categoría</option>
+                <option value="Lácteos">Lácteos</option>
+                <option value="Congelados">Congelados</option>
+                <option value="Gaseosas">Gaseosas</option>
+                <option value="Aseo personal">Aseo personal</option>
+                <option value="Aseo del hogar">Aseo del hogar</option>
+                <option value="Legumbres">Legumbres</option>
+                <option value="Frutas">Frutas</option>
+                <option value="Mecato">Mecato</option>
+                <option value="Galletas">Galletas</option>
+                <option value="Otros">Otros</option>
+            </select>
+        </div>
+
+        <!-- Marca y contenido -->
+        <div class="fila">
+
+            <div class="campo">
+                <label for="marca">Marca</label>
+                <input
+                    type="text"
+                    id="marca"
+                    placeholder="Ej. Colanta"
+                >
+            </div>
+
+            <div class="campo">
+                <label for="contenido">Contenido</label>
+                <input
+                    type="text"
+                    id="contenido"
+                    placeholder="Ej. 1 litro, 500 g"
+                >
+            </div>
+
+        </div>
+
+        <!-- Código de barras -->
+        <div class="campo">
+            <label for="codigo">Código de barras original *</label>
+
+            <div class="codigo-fila">
+                <input
+                    type="text"
+                    id="codigo"
+                    placeholder="Escanea el producto original"
+                    required
+                    autocomplete="off"
+                >
+
+                <button
+                    type="button"
+                    class="btn-escanear"
+                    id="btnEscanear"
+                >
+                    📷 Escanear
+                </button>
+            </div>
+
+            <p class="ayuda">
+                Escanea el código impreso en el empaque original.
+                No generamos ni inventamos códigos.
+            </p>
+
+            <div id="zonaEscaner">
+                <div id="lector"></div>
+
+                <button
+                    type="button"
+                    id="btnCerrarCamara"
+                    class="btn-cerrar-camara"
+                >
+                    ✖ Cerrar cámara
+                </button>
+            </div>
+
+            <p id="mensaje"></p>
+        </div>
+
+        <!-- Precio y cantidad -->
+        <div class="fila">
+
+            <div class="campo">
+                <label for="precio">Precio de venta (COP) *</label>
+                <input
+                    type="number"
+                    id="precio"
+                    placeholder="Ej. 3500"
+                    min="0"
+                    step="50"
+                    required
+                >
+            </div>
+
+            <div class="campo">
+                <label for="cantidad">Cantidad *</label>
+                <input
+                    type="number"
+                    id="cantidad"
+                    placeholder="Ej. 12"
+                    min="0"
+                    step="1"
+                    required
+                >
+            </div>
+
+        </div>
+
+        <button type="submit" class="btn-guardar">
+            + Registrar producto
+        </button>
+
+        <button type="button" class="btn-limpiar" id="btnLimpiar">
+            Limpiar formulario
+        </button>
+
+    </form>
+
+    <!-- Lista de productos registrados -->
+    <section class="seccion-productos">
+
+        <h2>Productos registrados</h2>
+
+        <span class="contador" id="contador">
+            0 productos
+        </span>
+
+        <div id="listaProductos">
+            <p class="vacio">Aún no has registrado productos.</p>
+        </div>
+
+    </section>
+
+</div>
+
+<script>
+    // ============================================
+    // 1. ELEMENTOS DEL FORMULARIO
+    // ============================================
+
+    const formulario = document.getElementById("formProducto");
+    const campoCodigo = document.getElementById("codigo");
+    const btnEscanear = document.getElementById("btnEscanear");
+    const btnCerrarCamara = document.getElementById("btnCerrarCamara");
+    const zonaEscaner = document.getElementById("zonaEscaner");
+    const mensaje = document.getElementById("mensaje");
+    const listaProductos = document.getElementById("listaProductos");
+    const contador = document.getElementById("contador");
+
+   // ============================================
+// 2. CONEXIÓN CON EL BACKEND PHP
+// ============================================
+
+let productos = [];
+
+const API_GUARDAR = "./guardar_producto.php";
+const API_LISTAR = "./listar_productos.php";
+    // ============================================
+    // 3. CONFIGURACIÓN DEL ESCÁNER
+    // ============================================
+
+    let escaner = null;
+    let camaraActiva = false;
+    let procesandoLectura = false;
+
+    // Formatos comerciales de códigos de barras
+    const formatos = [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.ITF
+    ];
+
+    // ============================================
+    // 4. ABRIR LA CÁMARA
+    // ============================================
+
+    btnEscanear.addEventListener("click", abrirEscaner);
+
+    async function abrirEscaner() {
+
+        if (camaraActiva) {
+            await cerrarEscaner();
+            return;
+        }
+
+        if (typeof Html5Qrcode === "undefined") {
+            mensaje.textContent = "No se pudo cargar la librería del escáner.";
+            return;
+        }
+
+        zonaEscaner.style.display = "block";
+        mensaje.textContent = "Solicitando permiso para utilizar la cámara...";
+
+        btnEscanear.disabled = true;
+
+        escaner = new Html5Qrcode("lector", {
+            formatsToSupport: formatos,
+            verbose: false
+        });
+
+        try {
+
+            await escaner.start(
+                { facingMode: "environment" },
+                {
+                    fps: 12,
+                    qrbox: function(ancho, alto) {
+                        const lado = Math.min(ancho * 0.85, alto * 0.45, 320);
+                        return {
+                            width: Math.floor(lado),
+                            height: Math.floor(Math.max(100, lado * 0.45))
+                        };
+                    }
+                },
+
+                // =================================
+                // 5. CÓDIGO DETECTADO
+                // =================================
+
+                async function(codigoLeido) {
+
+                    if (procesandoLectura) return;
+
+                    procesandoLectura = true;
+
+                    // Leer directamente el código del producto
+                    campoCodigo.value = codigoLeido;
+
+                    campoCodigo.dispatchEvent(
+                        new Event("input", { bubbles: true })
+                    );
+
+                    mensaje.textContent =
+                        "Código leído correctamente: " + codigoLeido;
+
+                    // Detener cámara tras lectura exitosa
+                    await cerrarEscaner();
+
+                    procesandoLectura = false;
+                },
+
+                function() {
+                    // Ignorar los errores de lectura mientras enfoca
+                }
+            );
+
+            camaraActiva = true;
+            btnEscanear.textContent = "✖ Detener escáner";
+            mensaje.textContent = "Cámara activa. Enfoca el código de barras original.";
+        } catch (error) {
+
+            console.error("Error al activar la cámara:", error);
+
+            mensaje.textContent =
+                "No se pudo abrir la cámara. Revisa los permisos del navegador.";
+
+            zonaEscaner.style.display = "none";
+
+            if (escaner) {
+                try {
+                    escaner.clear();
+                } catch(e) {}
+                escaner = null;
+            }
+
+        } finally {
+            btnEscanear.disabled = false;
+        }
+    }
+
+    // ============================================
+    // 6. CERRAR CÁMARA
+    // ============================================
+
+    btnCerrarCamara.addEventListener("click", cerrarEscaner);
+
+    async function cerrarEscaner() {
+
+        if (escaner) {
+
+            try {
+                if (camaraActiva) {
+                    await escaner.stop();
+                }
+            } catch (error) {
+                console.warn("La cámara ya estaba detenida.", error);
+            }
+
+            try {
+                escaner.clear();
+            } catch (error) {
+                console.warn(error);
+            }
+
+            escaner = null;
+        }
+
+        camaraActiva = false;
+        zonaEscaner.style.display = "none";
+        btnEscanear.textContent = "📷 Escanear";
+    }
+// ============================================
+// 7. REGISTRAR PRODUCTO EN MYSQL
+// ============================================
+
+formulario.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const nuevoProducto = {
+        nombre: document.getElementById("nombre").value.trim(),
+        categoria: document.getElementById("categoria").value,
+        marca: document.getElementById("marca").value.trim(),
+        contenido: document.getElementById("contenido").value.trim(),
+        codigo_barras: campoCodigo.value.trim().replace(/\s/g, ""),
+        precio: Number(document.getElementById("precio").value),
+        cantidad: Number(document.getElementById("cantidad").value)
+    };
+
+    // Evitar enviar dos veces el mismo producto
+    const existe = productos.some(
+        producto => producto.codigo === nuevoProducto.codigo_barras
+    );
+
+    if (existe) {
+        mensaje.textContent = "⚠️ Este código de barras ya está registrado.";
+        mensaje.style.color = "#d93025";
+        return;
+    }
+
+    const botonGuardar = formulario.querySelector(".btn-guardar");
+
+    try {
+
+        botonGuardar.disabled = true;
+        botonGuardar.textContent = "Guardando producto...";
+
+        const respuesta = await fetch(API_GUARDAR, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(nuevoProducto)
+        });
+
+        const resultado = await respuesta.json();
+
+        if (!respuesta.ok || !resultado.success) {
+            throw new Error(resultado.mensaje || "No se pudo guardar el producto.");
+        }
+
+        mensaje.textContent = "✅ " + resultado.mensaje;
+        mensaje.style.color = "#267a36";
+
+        // Consultar nuevamente los productos guardados en MySQL
+        await cargarProductos();
+
+        // Limpiar formulario después de guardar
+        formulario.reset();
+
+    } catch (error) {
+
+        console.error("Error al registrar producto:", error);
+
+        mensaje.textContent = "❌ " + error.message;
+        mensaje.style.color = "#d93025";
+
+    } finally {
+
+        botonGuardar.disabled = false;
+        botonGuardar.textContent = "+ Registrar producto";
+
+    }
+
+});
+    function mostrarProductos() {
+
+        contador.textContent =
+            productos.length +
+            (productos.length === 1 ? " producto" : " productos");
+
+        if (productos.length === 0) {
+            listaProductos.innerHTML =
+                '<p class="vacio">Aún no has registrado productos.</p>';
+            return;
+        }
+
+        listaProductos.innerHTML = "";
+
+        productos.forEach(function(producto, indice) {
+
+            const tarjeta = document.createElement("div");
+            tarjeta.className = "producto";
+
+            const nombre = document.createElement("strong");
+            nombre.textContent = (indice + 1) + ". " + producto.nombre;
+
+            const categoria = document.createElement("small");
+            categoria.textContent = "Categoría: " + producto.categoria;
+
+            const marca = document.createElement("small");
+            marca.textContent = "Marca: " + (producto.marca || "No especificada");
+
+            const contenido = document.createElement("small");
+            contenido.textContent = "Contenido: " + (producto.contenido || "No especificado");
+
+            const codigo = document.createElement("small");
+            codigo.textContent = "Código: " + producto.codigo;
+
+            const precio = document.createElement("small");
+            precio.className = "precio";
+            precio.textContent = "Precio: " +
+                producto.precio.toLocaleString("es-CO", {
+                    style: "currency",
+                    currency: "COP",
+                    maximumFractionDigits: 0
+                });
+
+            const cantidad = document.createElement("small");
+            cantidad.textContent = "Cantidad: " + producto.cantidad;
+
+            tarjeta.append(
+                nombre,
+                categoria,
+                marca,
+                contenido,
+                codigo,
+                precio,
+                cantidad
+            );
+
+            listaProductos.appendChild(tarjeta);
+        });
+    }
+
+    // ============================================
+    // 9. LIMPIAR FORMULARIO
+    // ============================================
+
+    document.getElementById("btnLimpiar").addEventListener("click", function() {
+
+        formulario.reset();
+
+        mensaje.textContent = "";
+        mensaje.style.color = "";
+
+    });
+    // ============================================
+// 10. CARGAR PRODUCTOS AL ABRIR LA PÁGINA
+// ============================================
+
+cargarProductos();
+
+</script>
+
+</body>
+</html>
